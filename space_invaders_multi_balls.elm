@@ -59,7 +59,7 @@ input = sampleOn delta (Input <~ Keyboard.space
 
 stepGame : Input -> Game -> Game
 stepGame ({space, dir, delta, pulse} as input) ({spaceship, balls, enemies, state, lastPulse, isGameOver} as game) =
-      let spaceship' = moveSpaceship spaceship delta dir
+      let spaceship' = moveSpaceship spaceship dir
           balls' = addBall balls space delta spaceship.rotation state enemies
           enemies' = addEnemy enemies balls delta pulse lastPulse
           state' = updateState state space
@@ -169,8 +169,8 @@ moveBall ({x,y,vx,vy} as ball) delta state angle isColliding = let (x',y') = upd
 convertDegreesToRadian : Float -> Float
 convertDegreesToRadian angleInDegree = angleInDegree / 180 * pi
 
-moveSpaceship : Spaceship -> Time -> Int -> Spaceship
-moveSpaceship spaceship delta angle = let rotation' = spaceship.rotation - ((toFloat angle) * 5)
+moveSpaceship : Spaceship -> Int -> Spaceship
+moveSpaceship spaceship angle = let rotation' = spaceship.rotation - ((toFloat angle) * 5)
                         in {spaceship | rotation <- rotation'}
 
 moveEnemy : Enemy -> Time -> [Ball] -> Enemy

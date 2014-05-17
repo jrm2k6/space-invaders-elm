@@ -77,8 +77,132 @@ display (w,h) {spaceship}  i = collage w h [
                 ]
 
 OK. A lot of stuff here. 
-display is a method taking a pair of ints representing the dimension of our window, a Game record as defined previously, and Input record, that you can ignore for now, and it returns an displayable Element.
+display is a method taking a pair of ints representing the dimension of our window, a Game record as defined previously, and Input record, that I am going to explain just after, and it returns an displayable Element.
+
+Now, we wanna make our speaceship to move when we pressed the arrows, by changing its rotation property. This is when signals and inputs are coming into place.
+
+We basically need to detect when we are using the left or right arrow, and move rotate our spaceship as a consequence of this user input. Elm provides a signal for this. In short, a signal is a value varying over time (add reference here).
+Elm gives us a signal to represent the arrow keys Keyboard.arrows. This function returns the key pressed by the user using a record form {x:Int, y:Int}, x representing left or right pressed, and y representing up or down pressed. To be more specific,
+x = -1 means that left is pressed, 1 means that right is pressed. y=-1 means down is pressed as y=1 means that up is pressed.
+
+We are going to use this to know if the user is pressing left or right.
+To do so, let's define our Input model:
+type Input = {dir:Int}
+
+We want to have an update on this event mutliple times per second.
+delta = inSeconds <~ fps 35
+input = sampleOn delta (Input <~ lift .x Keyboard.arrows)
+
+input basically means that we want to update the value of the arrows state 35 times per second.
+
+Great, we have now a game model, a input, and a display function. The last piece of the puzzle is to have an update function.
+stepGame : Input -> Game -> Game
+
+stepGame takes an input, a Game instance, and will update and return it.
+stepGame ({dir} as input) ({spaceship} as game) =
+      let spaceship' = moveSpaceship spaceship dir
+      in { game | spaceship  <- spaceship' }
+
+moveSpaceship : Spaceship -> Int -> Spaceship
+moveSpaceship spaceship angle = let rotation' = spaceship.rotation - ((toFloat angle) * 5)
+                        in {spaceship | rotation <- rotation'}
+
+It is quite a lot of code here. Let's check moveSpaceship first.
+moveSpaceship takes a spaceship and an angle (from pressing left or right, the value is either -1 or 1). This method will returns a new spaceship.
+
+We set rotation' to be the actual rotation of the spaceship adding/substracting 5 degrees depending on whether we are pressing left (-1) or right (+1). We assign rotation' to be the property rotation of the spaceship we return.
+
+Let's go back to stepGame now. Our game is only composed of a spaceship, so each update will be only updating the state of the spaceship. We are just calling moveSpaceship at each step, giving it the currentSpaceship and the dir property of our input.
+At the end, we assign the spaceship returns to be the element spaceship of our game.
+
+To resume, this is the small program you should have up and running.
+
+(Insert program here and screenshot)
 
 
+Now, we want to be able to shoot a missile, and only one for now! 
+Same procedure as for the spaceship. We create the model part and modify the Game model.
+So a missile is gonna be called a Ball. It will be a record identified by a position, a velocity x and y, an angle, and finally a status.
+
+Status is needed to know if a missile is flying, out of the screen or colliding, as we expect the missile to interact with some other objects later on.
+
+So here is how we implement this:
+
+-- the Ball model
+type Ball = {x:Float, y:Float, vx:Float, vy:Float, angle:Float, status:FlyingElementState}
+-- the FlyingElementState record 
+data FlyingElementState = Flying | OutOfBounds | Colliding | ReadyToFly
+
+We need to add this new model to the Game model.
+
+type Game = {spaceship:Spaceship, ball:Ball}
+
+Let's now implement the view for our missile (or so called ball).
+The ball is simply going to be a circle filled with a color.
+We know how to do this: drawBall clr = (filled clr (circle 4))
+
+Let's see further. We know that the ball is going to move on the screen, so we will need to always set the ball position on the screen to take the ball x and y properties of its model.
+We can then use the move (url needed) method to manually position the ball on our scene. 
+
+drawBall : Ball -> Color -> Form
+drawBall ball clr = ( move (ball.x, ball.y) (filled clr (circle 4)))
+
+Great, we have now a model and a view for our ball, but how are we going to create one.
+We want to create a ball each time the player presses the space key.
+
+So we have to this in two steps: modify the input to add the space key handling, and modify the updateGame method to check if we have to create a ball or not.
+
+To modify the input we can just modify our Input record, to add a boolean which means 'space key is pressed', by using Keyboard.space (url).
+
+delta = inSeconds <~ fps 35 
+input = sampleOn delta (Input <~ lift Keyboard.space,
+							   ~ lift .x Keyboard.arrows)
+
+Then let's modify our game instance to put a default ball that we will shoot when pressing space.
+defaultGame : Game
+defaultGame = 
+{ 
+	spaceship = {x=0, y=-halfHeight+40, rotation=90},
+	ball = {x=0, y=-halfHeight+40, vx=200, vy=200, angle=90, status=ReadyToFly}
+}
+
+We add some methods to move the ball when we press space:
+
+-- moveBall needs to do two things, update the ball position, and the ball state to know if we have to put back the ball
+-- at the origin or not
+moveBall : Ball -> Bool -> Time -> Float -> Ball
+moveBall ({x,y,vx,vy} as ball) space delta angle = let (x',y') = updateBallPosition ball delta
+                                                       status' = updateBallState ball space 
+                                                       angle' =  if ball.status == ReadyToFly then angle else ball.angle
+                                                   in {ball | x <- x', y <- y', angle <- angle', status <- status' }
+
+
+-- We need to change the state of the ball depending on two things:
+--         - we press space and the ball was not flying
+           - we reach the bounds of the screen
+
+updateBallState : Ball -> Bool -> FlyingElementState 
+updateBallState ball spacePressed = if ball.y > halfHeight || ball.x < -halfWidth || ball.x > halfWidth then ReadyToFly
+                       else if (ball.status == ReadyToFly) && spacePressed then Flying
+                       else ball.status
+
+
+-- We need to change the position of the ball depending on the status. We use pattern-matching for that.
+-- If we are flyingm we need to move the ball up the screen.
+
+updateBallPosition : Ball -> Time -> (Float,Float)
+updateBallPosition ({x,y,vx,vy,angle,status} as ball) delta= case (x, y, status) of
+                                                                   (_,_,ReadyToFly)  -> (0, -halfHeight+40)
+                                                                   (_,_,Flying)      -> (x + vx * delta * cos (convertDegreesToRadian angle), y + vy * delta * sin (convertDegreesToRadian ball.angle))
+
+-- helper function
+convertDegreesToRadian : Float -> Float
+convertDegreesToRadian angleInDegree = angleInDegree / 180 * pi
+
+
+
+
+
+Great, we can shoot our ball. The next step is to make an enemy crossing the screen. Should be pretty simple fron now on.
 
 
