@@ -203,6 +203,113 @@ convertDegreesToRadian angleInDegree = angleInDegree / 180 * pi
 
 
 
-Great, we can shoot our ball. The next step is to make an enemy crossing the screen. Should be pretty simple fron now on.
+Great, we can shoot our ball. The next step is to make an enemy crossing the screen. Should be pretty simple from now on.
+So same steps as before, and we end up with this for the enemy part:
+
+-- model 
+type Enemy = {x:Float, y:Float, vx:Float, vy:Float, status:FlyingElementState}
+
+-- view
+drawEnemy : Enemy -> Color -> Form
+drawEnemy enemy clr = move (enemy.x, enemy.y) (filled clr (ngon 4 15))
+
+-- we modify the game as follow
+
+defaultGame : Game
+defaultGame = 
+  {
+    spaceship = {x=0, y=-halfHeight+40, rotation=90},
+    ball = {x=0, y=-halfHeight+40, vx=200, vy=200, angle=90, status=ReadyToFly},
+    enemy = {x=100, y=halfHeight-40, vx=200, vy=200, status=Flying}
+  }
+
+stepGame : Input -> Game -> Game
+stepGame ({space, dir, delta} as input) ({spaceship, ball, enemy} as game) =
+      let spaceship' = moveSpaceship spaceship dir
+          ball' = moveBall ball space delta spaceship.rotation
+          enemy' = moveEnemy enemy delta ball
+      in { game | spaceship  <- spaceship', ball <- ball', enemy <- enemy'}
+
+
+-- update part for enemy
+moveEnemy : Enemy -> Time -> Ball -> Enemy
+moveEnemy ({x,y,vx,vy} as enemy) delta ball = let y' = if (y > -halfHeight && y < halfHeight && not (isColliding enemy ball))
+                                                        then y - vy * delta 
+                                                        else halfHeight-40 
+                        in {enemy | y <- y'}
+
+isColliding : Enemy -> Ball -> Bool                       
+isColliding enemy ball = (abs (enemy.x - ball.x)) < 30 && (abs (enemy.y - ball.y)) < 30
+
+-- modify display method
+display : (Int, Int) -> Game -> Input -> Element
+display (w,h) {spaceship, ball, enemy} i  = collage w h [
+                move (0, 0) (filled yellow (rect gameWidth gameHeight)),
+                (drawSpaceship spaceship red),
+                (drawBall ball blue),
+                (drawEnemy enemy green)
+                ]
+
+
+You can notive that at this point, the enemy disappear when the ball is close, but the ball continues to fly.
+It could be a nice exercise to fix this :)
+
+Let's speed up now.
+We have a game with a spaceship, a flying missile, a flying enemy.
+We still need to:
+- have multiple missiles,
+- have random enemies coming on the screen at some regular interval,
+- detect game over for this simple game (enemy crossing our line)
+
+I am going to go only over the interesting step, as:
+- putting an enemy on the screen at regular interval
+- making the game having a list of missiles and enemies.
+
+
+Display new enemy at regular interval
+
+To do that, we need to modify our input. We need to add some kind of a pulse, that we will store, and compare with the next one. If they are different we need to add an enemy.
+
+The signal will be this:
+pulse = every (0.5 * second) 
+
+It means: send me an update every half a second.
+We will need to store it in our game model:
+type Game = {spaceship:Spaceship, balls:[Ball], enemies:[Enemy], state:State, lastPulse:Maybe Time, isGameOver:Bool}
+
+You might have noticed that lastPulse is a Maybe Time. Shortly, it means that lastPulse is either an empty value (Empty), or it contains a value, a Just type holding a value of type Time. We need this because when we start the game, we won't have any update for the pulse for half a second, but we still need to update the reste of the game as we will receive 35 updates a second.
+
+Maybe are useful in this case, and easy to use. I let you check the documentation for more info.
+
+Making the game to have a list of missiles and balls.
+
+We have the implementation for one missile and one enemy. Functional languages are really nice to use in my opinion because of this context. We need to go from one to many. We just basically have to replace the Ball and Enemy properties by [Ball] and [Enemy] properties in the game. We are sure that our implementation is working. We are going to naively use map and filter to be able to handle more enemies and balls.
+
+
+So for example, when we press space, we just need to push a new ball to our list:
+addBall : [Ball] -> Bool -> Time -> Float -> State -> [Enemy] -> [Ball]
+addBall balls isSpacePressed delta angle state enemies =  let balls' = if isSpacePressed then balls ++ [defaultBall angle] else balls
+                                                        in updateAllBalls balls' delta angle state enemies
+
+To move them all, we just apply the function moveBall to all of them:
+-- this doesn't only move, it also removes the colliding and out of bounds balls from the screen.
+updateAllBalls : [Ball] -> Time -> Float -> State -> [Enemy] -> [Ball]
+updateAllBalls balls delta angle state enemies = filter (\b -> b.status /= Colliding && b.status /= OutOfBounds) (map (\b -> moveBall b delta state angle (checkCollisionsWithEnemies b enemies)) balls)
+
+
+You get the idea.
+
+The final implementation can be found here:
+(gist game) and share-elm link.
+
+There is some bugs/performance issues with my implementation.
+I just wanted to try elm on a real small game. 
+Here are the small improvements needed:
+- find a smarter way of detecting collisions, by splitting the list of balls/enemies in smaller list that you can ditch by just looking at few elements
+- add more control to restart the game
+- make the enemies come at you instead of just trying to cross the bottom of the screen
+- make different types of missiles
+
+
 
 
