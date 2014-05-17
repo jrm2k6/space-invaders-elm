@@ -309,6 +309,16 @@ Here are the small improvements needed:
 - add more control to restart the game
 - make the enemies come at you instead of just trying to cross the bottom of the screen
 - make different types of missiles
+- limit the ammo amount
+
+
+I hope it gives you a better glance at how you can start to use elm, and how to structure a program. I am by no mean saying my implementation is perfect, but it took me only two small afternoon to have it done, and one afternoon to grasp (not in deep details, i admit) most of the FRP and signals concept.
+
+To conclude, I think elm and FRP provides a nice way on iterating on your code. When you have a part of your code which is correct, you can easily extend it without worrying about breaking your previous code. You can really separate the view from the model, from the update. You can also create your own tricky signals (thing I don't have here).
+
+If you want better resources, and posts doing correctly what I have attempted to do here, give a look at:
+- https://github.com/Dobiasd/articles/blob/master/switching_from_imperative_to_functional_programming_with_games_in_Elm.md
+- http://scrambledeggsontoast.github.io/2014/05/09/writing-2048-elm/
 
 
 
