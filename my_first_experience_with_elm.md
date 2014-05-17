@@ -14,7 +14,7 @@ assignment. Nothing crazy, even if I plan to build something bigger, and useful 
 
 Let's get started.
 
-What I wanted to build was a small space invader game. You have a spaceship that you can rotate, and you can shoot enemies coming at you. If an enemy cross the imaginary line where you stand, you lose.
+What I wanted to build was a small space invader game (url:http://en.wikipedia.org/wiki/Space_Invaders). You have a spaceship that you can rotate, and you can shoot enemies coming at you. If an enemy cross the imaginary line where you stand, you lose.
 
 Having that said, we have now an idea of how we should build our game.
 We can divide the implementation into three parts: the model, the updates, and the views.
@@ -34,7 +34,7 @@ Moreover, the way I described the game gives us a nice way of implementing it.
 We are going to take care of the spaceship first, the missiles after, and finally the enemies.
 
 
-Implementation of the spaceship model, view, and the way we are going to interact with it?
+Implementation of the spaceship.
 
 Our game will contain a unique spaceship, located at the bottom center of our scene.
 To represent it, we decided on drawing a triangle.
@@ -64,7 +64,7 @@ drawSpaceship spaceship clr = (filled clr (ngon 3 20))
 
 ngon is a function taking two integers as parameters. The first one represents the number of sides that our polygon has, the second one the width of it. So in our case, (ngon 3 20) means a polygon with 3 sides, 20 pixels of width, therefore it gives us a triangle. Great, now let's give it some style. We just want it to be full of one color, so we are just using the function filled, that we compose with our initial triangle. We could have styled it in some other ways, but for this, you are free to check the documentation.
 
-Great, we have our spaceship but we don't see anything on the screen yet. Let's display it, and we will fix it after.
+We have our spaceship but we don't see anything on the screen yet. Let's display it, and we will fix it after.
 
 To display elements on the screen, we are going to use a collage, as explained in the introduction to graphics referenced earlier.
 
@@ -77,11 +77,11 @@ display (w,h) {spaceship}  i = collage w h [
                 ]
 
 OK. A lot of stuff here. 
-display is a method taking a pair of ints representing the dimension of our window, a Game record as defined previously, and Input record, that I am going to explain just after, and it returns an displayable Element.
+display is a method taking a pair of ints representing the dimension of our window, a Game record as defined previously, and Input record, that I am going to explain just after, and it returns a displayable Element.
 
 Now, we wanna make our speaceship to move when we pressed the arrows, by changing its rotation property. This is when signals and inputs are coming into place.
 
-We basically need to detect when we are using the left or right arrow, and move rotate our spaceship as a consequence of this user input. Elm provides a signal for this. In short, a signal is a value varying over time (add reference here).
+We basically need to detect when we are using the left or right arrow, and rotate our spaceship as a response to this input. Elm provides a signal for this. A signal is a value varying over time (add reference here).
 Elm gives us a signal to represent the arrow keys Keyboard.arrows. This function returns the key pressed by the user using a record form {x:Int, y:Int}, x representing left or right pressed, and y representing up or down pressed. To be more specific,
 x = -1 means that left is pressed, 1 means that right is pressed. y=-1 means down is pressed as y=1 means that up is pressed.
 
@@ -95,7 +95,8 @@ input = sampleOn delta (Input <~ lift .x Keyboard.arrows)
 
 input basically means that we want to update the value of the arrows state 35 times per second.
 
-Great, we have now a game model, a input, and a display function. The last piece of the puzzle is to have an update function.
+Great, we have now a game model, an input, and a display function. The last piece of the puzzle is to have an update function.
+
 stepGame : Input -> Game -> Game
 
 stepGame takes an input, a Game instance, and will update and return it.
@@ -113,25 +114,24 @@ moveSpaceship takes a spaceship and an angle (from pressing left or right, the v
 We set rotation' to be the actual rotation of the spaceship adding/substracting 5 degrees depending on whether we are pressing left (-1) or right (+1). We assign rotation' to be the property rotation of the spaceship we return.
 
 Let's go back to stepGame now. Our game is only composed of a spaceship, so each update will be only updating the state of the spaceship. We are just calling moveSpaceship at each step, giving it the currentSpaceship and the dir property of our input.
-At the end, we assign the spaceship returns to be the element spaceship of our game.
+At the end, we assign the spaceship returned to replace the previous one.
 
-To resume, this is the small program you should have up and running.
+To resume, this is the small program you should have up and running (put gist url)
 
-(Insert program here and screenshot)
 
 
 Now, we want to be able to shoot a missile, and only one for now! 
 Same procedure as for the spaceship. We create the model part and modify the Game model.
 So a missile is gonna be called a Ball. It will be a record identified by a position, a velocity x and y, an angle, and finally a status.
 
-Status is needed to know if a missile is flying, out of the screen or colliding, as we expect the missile to interact with some other objects later on.
+Status is needed to know if a missile is flying or not, as we expect the missile to interact with some other objects later on.
 
 So here is how we implement this:
 
 -- the Ball model
 type Ball = {x:Float, y:Float, vx:Float, vy:Float, angle:Float, status:FlyingElementState}
 -- the FlyingElementState record 
-data FlyingElementState = Flying | OutOfBounds | Colliding | ReadyToFly
+data FlyingElementState = Flying | Colliding | ReadyToFly
 
 We need to add this new model to the Game model.
 
@@ -147,10 +147,10 @@ We can then use the move (url needed) method to manually position the ball on ou
 drawBall : Ball -> Color -> Form
 drawBall ball clr = ( move (ball.x, ball.y) (filled clr (circle 4)))
 
-Great, we have now a model and a view for our ball, but how are we going to create one.
+Great, we have now a model and a view for our ball, but how are we going to create it.
 We want to create a ball each time the player presses the space key.
 
-So we have to this in two steps: modify the input to add the space key handling, and modify the updateGame method to check if we have to create a ball or not.
+So we have to this in two steps: modify the input to add the space key handling, and modify the updateGame method to check if we have to move a ball or not.
 
 To modify the input we can just modify our Input record, to add a boolean which means 'space key is pressed', by using Keyboard.space (url).
 
@@ -302,7 +302,7 @@ You get the idea.
 The final implementation can be found here:
 (gist game) and share-elm link.
 
-There is some bugs/performance issues with my implementation.
+There are some bugs/performance issues with my implementation.
 I just wanted to try elm on a real small game. 
 Here are the small improvements needed:
 - find a smarter way of detecting collisions, by splitting the list of balls/enemies in smaller list that you can ditch by just looking at few elements
