@@ -11,10 +11,10 @@ type Spaceship = {x:Float, y:Float, rotation:Float}
 type Game = {spaceship:Spaceship}
 
 defaultGame : Game
-defaultGame = 
-{ 
-	spaceship = {x=0, y=-halfHeight+40, rotation=90}
-}
+defaultGame =
+	{ 
+		spaceship = {x=0, y=-halfHeight+40, rotation=90}
+	}
 
 
 delta = inSeconds <~ fps 35 
